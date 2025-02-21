@@ -5,7 +5,7 @@
   
 2. Provide access token and api keys as a user secrets (or simmilar):
     - Example schema: {
-    "Jwt:Key": "JwtKey",
+    /n "Jwt:Key": "JwtKey",
     "Jwt:Issuer": "http://localhost:7114",
     "Jwt:Audience": "http://localhost:7114",
     "GitHub:Token": "YOUR_GITHUB_TOKEN",
