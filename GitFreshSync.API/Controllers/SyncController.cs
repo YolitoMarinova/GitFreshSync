@@ -1,10 +1,12 @@
 ﻿using GitFreshSync.Application.Dtos.Sync;
 using GitFreshSync.Application.Sync.Commands.SyncGitHubToFreshdeskCommand;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GitFreshSync.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class SyncController : ControllerBase
