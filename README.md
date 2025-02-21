@@ -4,13 +4,14 @@
    - Provide the generated token as Barear token.
   
 2. Provide access token and api keys as a user secrets (or simmilar):
-    - Example schema: {
-    /n "Jwt:Key": "JwtKey",
-    "Jwt:Issuer": "http://localhost:7114",
-    "Jwt:Audience": "http://localhost:7114",
-    "GitHub:Token": "YOUR_GITHUB_TOKEN",
-    "Freshdesk:ApiKey": "YOUR_FRESH_DESK_API"
-  }
+    - Example schema:
+      <br />{
+    <br /> "Jwt:Key": "JwtKey",
+    <br />"Jwt:Issuer": "http://localhost:7114",
+    <br />"Jwt:Audience": "http://localhost:7114",
+    <br />"GitHub:Token": "YOUR_GITHUB_TOKEN",
+    <br />"Freshdesk:ApiKey": "YOUR_FRESH_DESK_API"
+ <br /> }
 
 3. Sync GitHub user to Freshdesk contact by using /api/Sync/github-to-freshdesk.
 
