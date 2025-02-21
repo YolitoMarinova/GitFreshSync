@@ -20,7 +20,7 @@ namespace GitFreshSync.API.Controllers
         public async Task<IActionResult> SyncGitHubToFreshdesk([FromBody] SyncRequestDto request)
         {
             var result = await _mediator.Send(new SyncGitHubToFreshdeskCommand(request.GitHubUsername, request.FreshdeskSubdomain));
-            return result ? Ok("Sync successful") : BadRequest("Sync failed");
+            return result ? Ok(result) : BadRequest(result);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using GitFreshSync.Application.Dtos.Freshdesk;
 using GitFreshSync.Application.Interfaces;
+using GitFreshSync.Application.Validators;
 using MediatR;
 
 namespace GitFreshSync.Application.Sync.Commands.SyncGitHubToFreshdeskCommand
@@ -19,11 +20,12 @@ namespace GitFreshSync.Application.Sync.Commands.SyncGitHubToFreshdeskCommand
         {
             // Fetch user from GitHub
             var gitHubUser = await _gitHubService.GetGitHubUserAsync(request.GitHubUsername);
-            if (gitHubUser == null) throw new Exception("GitHub user not found.");
+
+            GitHubUserValidator.Validate(gitHubUser);
 
             var contact = new FreshdeskContactInputDto
             {
-                Name = gitHubUser.Name,
+                Name = gitHubUser!.Name,
                 Email = gitHubUser.Email,
                 CompanyId = await GetCompanyId(request.FreshdeskSubdomain, gitHubUser.Company),
                 Description = gitHubUser.Bio

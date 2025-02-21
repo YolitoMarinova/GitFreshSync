@@ -1,14 +1,11 @@
 ﻿using GitFreshSync.Application.Configurations;
+using GitFreshSync.Application.Constants.ErrorMessages;
 using GitFreshSync.Application.Dtos.Freshdesk;
+using GitFreshSync.Application.Exceptions.Freshdesk;
 using GitFreshSync.Application.Interfaces;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace GitFreshSync.Infrastructure.Services
 {
@@ -28,47 +25,53 @@ namespace GitFreshSync.Infrastructure.Services
 
         public async Task<FreshdeskCompanySearchResultDto> SearchCompanies(string subdomain, string companyName)
         {
-            var url = $"https://{subdomain}.freshdesk.com/api/v2/companies/autocomplete?name={companyName}";
+            var url = ConstructUrl(subdomain, $"companies/autocomplete?name={companyName}");
 
             var response = await _httpClient.GetAsync(url);
 
-            var responseData = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode || string.IsNullOrEmpty(responseData))
+            if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Failed to search companies. Status code: {response.StatusCode}");
+                throw new FailedCompaniesSearchException(string.Format(FreshdeskErrorMessages.SearchCompaniesFailed, response.StatusCode));
             }
 
-            return JsonSerializer.Deserialize<FreshdeskCompanySearchResultDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var responseData = await response.Content.ReadAsStringAsync();
+
+            var result = JsonSerializer.Deserialize<FreshdeskCompanySearchResultDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (result == null)
+            {
+                throw new SearchCompanyDeserializationException(FreshdeskErrorMessages.DeserializationFailed);
+            }
+
+            return result;
         }
 
         public async Task<FreshdeskCompanyDto> CreateCompany(string subdomain, FreshdeskCompanyCreateDto dto)
         {
-            var url = $"https://{subdomain}.freshdesk.com/api/v2/companies";
+            var url = ConstructUrl(subdomain, "companies");
             var jsonContent = JsonSerializer.Serialize(dto);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(url, content);
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Failed to create company. Status code: {response.StatusCode}");
+                throw new FailedCreateCompanyException(string.Format(FreshdeskErrorMessages.FailedToCreateCompany, response.StatusCode));
             }
 
             var responseData = await response.Content.ReadAsStringAsync();
-            var company = JsonSerializer.Deserialize<FreshdeskCompanyDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var result = JsonSerializer.Deserialize<FreshdeskCompanyDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            if (company == null)
+            if (result == null)
             {
-                throw new Exception("Failed to create company.");
+                throw new CompanyDeserializationException(FreshdeskErrorMessages.DeserializationFailed);
             }
 
-            return company;
+            return result;
         }
 
         public async Task<FreshdeskContactDto?> CreateOrUpdateContactAsync(string subdomain, FreshdeskContactInputDto contact)
         {
             var searchResult = await SearchContactAsync(subdomain, contact.Email);
-
 
             if (searchResult?.Length > 0)
             {
@@ -82,7 +85,7 @@ namespace GitFreshSync.Infrastructure.Services
 
         private async Task<FreshdeskContactDto?> CreateContactAsync(string subdomain, FreshdeskContactInputDto contact)
         {
-            var url = $"https://{subdomain}.freshdesk.com/api/v2/contacts";
+            var url = ConstructUrl(subdomain, "contacts");
             var jsonContent = JsonSerializer.Serialize(contact);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
@@ -90,38 +93,46 @@ namespace GitFreshSync.Infrastructure.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Failed to create contact. Status code: {response.StatusCode}");
+                throw new CreateFreshdeskContactFailedException(string.Format(FreshdeskErrorMessages.FailedToCreateContact, response.StatusCode));
             }
 
             var responseData = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<FreshdeskContactDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return JsonSerializer.Deserialize<FreshdeskContactDto?>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
 
         private async Task<FreshdeskContactDto?> UpdateExistingContactAsync(string subdomain, long id, FreshdeskContactInputDto contact)
         {
-            var contactId = id;
-            var updateUrl = $"https://{subdomain}.freshdesk.com/api/v2/contacts/{contactId}";
+            var updateUrl = ConstructUrl(subdomain, $"contacts/{id}");
             var jsonContent = JsonSerializer.Serialize(contact);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            var updateResponse = await _httpClient.PutAsync(updateUrl, content);
-            if (updateResponse.IsSuccessStatusCode)
+            var response = await _httpClient.PutAsync(updateUrl, content);
+            if (!response.IsSuccessStatusCode)
             {
-                var responseData = await updateResponse.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<FreshdeskContactDto>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                throw new UpdateFreshdeskContactFailedException(string.Format(FreshdeskErrorMessages.FailedToUpdateContact, response.StatusCode));
             }
 
-            return null;
+            var responseData = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<FreshdeskContactDto?>(responseData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
 
         private async Task<FreshdeskContactDto[]?> SearchContactAsync(string subdomain, string email)
         {
-            var searchUrl = $"https://{subdomain}.freshdesk.com/api/v2/contacts?email={email}";
-            var searchResponse = await _httpClient.GetAsync(searchUrl);
-            if (!searchResponse.IsSuccessStatusCode) return null;
+            var url = ConstructUrl(subdomain, $"contacts?email={email}");
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new SearchContactFailedException(string.Format(FreshdeskErrorMessages.SearchContanctsFailed, response.StatusCode));
+            }
 
-            var searchData = await searchResponse.Content.ReadAsStringAsync();
+            var searchData = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<FreshdeskContactDto[]?>(searchData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+
+        private string ConstructUrl(string subdomain, string endpoint)
+        {
+            var baseUrl = string.Format(_freshdeskSettings.ApiUrl, subdomain);
+            return $"{baseUrl}{endpoint}";
         }
     }
 }

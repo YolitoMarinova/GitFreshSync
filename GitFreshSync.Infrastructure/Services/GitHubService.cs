@@ -1,11 +1,11 @@
 ﻿using GitFreshSync.Application.Dtos.GitHub;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using GitFreshSync.Application.Configurations;
 using GitFreshSync.Application.Interfaces;
+using GitFreshSync.Application.Constants.ErrorMessages;
+using GitFreshSync.Application.Exceptions.Github;
 
 
 namespace GitFreshSync.Infrastructure.Services;
@@ -29,10 +29,10 @@ public class GitHubService : IGitHubService
         var response = await _httpClient.GetAsync($"{_gitHubSettings.ApiUrl}{username}");
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception($"GitHub API returned {response.StatusCode}");
+            throw new GetGitHubUserException(string.Format(GithubErrorMessages.GetGitHubUserFailed, response.StatusCode));
         }
 
         var content = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<GitHubUserDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        return JsonSerializer.Deserialize<GitHubUserDto?>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 }
